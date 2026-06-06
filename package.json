@@ -1,0 +1,20 @@
+{
+  "name": "hearsay",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Hearsay — an adversarial AI courtroom that hears the side you didn't type. A society of Qwen agents (Clerk, opposed Counsels, a vote-changing Jury, a grounding Cross-examiner) over a deterministic Bench that judges the deed, not the storyteller.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n web,api -c ochre,slate \"vite\" \"tsx watch server/index.ts\"",
+    "dev:api": "tsx watch server/index.ts",
+    "dev:web": "vite",
+    "build": "vite build && node scripts/build-server.mjs",
+    "start": "node dist-server/index.js",
+    "preview": "npm run build && npm start",
+    "typecheck": "tsc --noEmit",
+    "mcp": "tsx mcp/comms-mcp/server.ts"
+  },

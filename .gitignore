@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# builds
+dist/
+dist-server/
+*.tsbuildinfo
+
+# runtime data (the append-only NDJSON court record lives here at runtime)
+.data/
+data/records/
+
+# secrets — NEVER commit
+.env
+.env.local
+.env.*.local
+
+# editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# logs
+*.log
+npm-debug.log*
+
+# python bytecode (from running skill scripts)
+__pycache__/
+*.pyc
