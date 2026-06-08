@@ -1,0 +1,29 @@
+/* Hearsay — locked design tokens (ported from the design package). "The Living Courtroom Sketch." */
+@font-face { font-family: 'Baloo2'; src: url('/fonts/Baloo2.ttf'); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: 'Figtree'; src: url('/fonts/Figtree.ttf'); font-weight: 300 900; font-display: swap; }
+@font-face { font-family: 'Caveat'; src: url('/fonts/Caveat.ttf'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'Fraunces'; src: url('/fonts/Fraunces.ttf'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'SpaceMono'; src: url('/fonts/SpaceMono-Regular.ttf'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'SpaceMono'; src: url('/fonts/SpaceMono-Bold.ttf'); font-weight: 700; font-display: swap; }
+
+:root {
+  /* --- the locked palette (no red, anywhere) --- */
+  --paper: #EAD9BC;
+  --paper-hi: #F3E8CF;
+  --paper-lo: #DCC7A2;
+  --paper-edge: #CBB489;
+  --ink: #2A2420;
+  --ink-soft: #514637;
+  --ink-faint: #8A7A63;
+
+  --ochre: #C8892E;
+  --ochre-hi: #E2A94C;
+  --ochre-deep: #9A5F1C;
+  --ochre-skin: #E1AE79;
+
+  --slate: #4A5A6A;
+  --slate-hi: #6E8494;
+  --slate-deep: #33414C;
+  --slate-skin: #93A6B2;
+
+  --moved: #7A8B57;
