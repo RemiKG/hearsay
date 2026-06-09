@@ -1,0 +1,78 @@
+/* Hearsay — app chrome. The interface and the art are ONE surface: toned newsprint,
+   sketched (wobbly) borders drawn by an SVG displacement filter on a border-only layer,
+   ochre washes, the four fonts. No red, anywhere. */
+
+/* ── the paper ground: warm tan + real tooth (turbulence) + a soft vignette ── */
+.paper-bg {
+  position: fixed; inset: 0; z-index: -2; background: var(--paper);
+}
+.paper-bg::before {
+  content: ''; position: absolute; inset: 0; mix-blend-mode: multiply; opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.18' intercept='0.82'/%3E%3CfeFuncG type='linear' slope='0.18' intercept='0.82'/%3E%3CfeFuncB type='linear' slope='0.18' intercept='0.82'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 150px 150px;
+}
+.paper-bg::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(72% 68% at 50% 42%, transparent 60%, rgba(203,180,137,0.45) 100%);
+}
+
+.app { min-height: 100vh; display: flex; flex-direction: column; }
+.wrap { width: 100%; max-width: 1440px; margin: 0 auto; padding: 0 40px 64px; }
+@media (max-width: 720px) { .wrap { padding: 0 18px 48px; } }
+
+/* ── colours as utilities ── */
+.c-ink { color: var(--ink); } .c-inks { color: var(--ink-soft); } .c-inkf { color: var(--ink-faint); }
+.c-ochre { color: var(--ochre); } .c-ochred { color: var(--ochre-deep); }
+.c-slate { color: var(--slate); } .c-slated { color: var(--slate-deep); }
+.c-moved { color: var(--moved); }
+
+/* ── text roles ── */
+.eyebrow { font-family: 'Figtree', sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 2.5px;
+  text-transform: uppercase; color: var(--ink-faint); }
+.disp { font-family: 'Baloo2', system-ui; font-weight: 700; letter-spacing: -0.5px; color: var(--ink); line-height: 1.06; }
+.hand { font-family: 'Caveat', cursive; color: var(--ink-soft); }
+.mono { font-family: 'SpaceMono', ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.ui { font-family: 'Figtree', system-ui, sans-serif; color: var(--ink); }
+
+/* ── the sketched (wobbly) border trick: an SVG displacement filter applied to a
+   border-ONLY overlay layer, so the content stays crisp while the edge wavers ── */
+.edge {
+  position: absolute; inset: 0; pointer-events: none;
+  border: 2.2px solid var(--ink); border-radius: 14px; opacity: 0.82;
+  filter: url(#rghF);
+}
+
+/* card / field / button surfaces */
+.card { position: relative; background: var(--paper-hi); border-radius: 14px;
+  box-shadow: 2px 5px 9px rgba(42,36,32,0.11); }
+.card > .edge { border-color: var(--ink); }
+.card.flat { box-shadow: none; }
+.card .accent { position: absolute; top: 0; left: 0; right: 0; height: 6px; border-radius: 14px 14px 0 0;
+  background: var(--ochre); opacity: 0.92; }
+.card.accent-slate .accent { background: var(--slate); }
+
+.field { position: relative; background: var(--paper-lo); border-radius: 10px; }
+.field > .edge { border-width: 1.7px; opacity: 0.5; border-radius: 10px; }
+
+.btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: 'Baloo2', system-ui; font-weight: 600; color: var(--ink); background: var(--paper-hi);
+  border: none; border-radius: 999px; padding: 13px 22px; cursor: pointer; font-size: 17px;
+  box-shadow: 2px 4px 7px rgba(42,36,32,0.10); transition: transform .12s ease, filter .12s ease; }
+.btn > .edge { border-radius: 999px; border-width: 2.2px; opacity: 0.8; }
+.btn:hover { transform: translateY(-1px); filter: brightness(1.02); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: var(--ochre); color: var(--on-ochre); font-weight: 700; }
+.btn-primary > .edge { border-color: var(--ochre-deep); }
+
+.chip { position: relative; display: inline-flex; align-items: center; gap: 8px; font-family: 'Figtree', sans-serif;
+  font-weight: 600; font-size: 13px; color: var(--ink); background: var(--paper); border-radius: 8px; padding: 6px 12px; }
+.chip > .edge { border-radius: 8px; border-width: 1.7px; opacity: 0.7; }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ochre); }
+.chip.on { background: var(--paper-hi); color: var(--ochre-deep); }
+
+/* ── top bar ── */
+.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 16px;
+  height: 72px; padding: 0 40px; border-bottom: 1.5px solid rgba(42,36,32,0.22);
+  background: color-mix(in srgb, var(--paper) 90%, transparent); backdrop-filter: blur(3px); }
+@media (max-width: 720px) { .topbar { padding: 0 16px; height: 62px; } }
