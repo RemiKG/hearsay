@@ -27,3 +27,27 @@
   --slate-skin: #93A6B2;
 
   --moved: #7A8B57;
+  --parch-line: #C9B48C;
+
+  /* button ink on ochre (accessible warm dark) */
+  --on-ochre: #3A2A12;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; padding: 0; height: 100%; }
+body {
+  font-family: 'Figtree', system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+/* type roles */
+.k-mono { font-family: 'SpaceMono', ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.k-hand { font-family: 'Caveat', cursive; }
+.k-slab { font-family: 'Baloo2', system-ui; }
+.k-serif { font-family: 'Fraunces', Georgia, serif; }
+.k-ui { font-family: 'Figtree', system-ui, sans-serif; }
+
+svg { display: block; }
