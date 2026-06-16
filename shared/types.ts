@@ -112,3 +112,143 @@ export interface HumanQuestion {
 export interface FairPath {
   you: string;
   other: string;
+}
+
+/** The deterministic Bench's ruling — LLM proposes, the tally disposes. */
+export interface Verdict {
+  category: VerdictCategory;
+  counts: Record<VerdictCategory, number>;
+  /** the head-to-head split, e.g. "5-2" (winner first) */
+  split: string;
+  jurors: number;
+  moved: number;
+  /** 0..1 — how decisive; drives calibration language */
+  margin: number;
+  calibration: string;
+  fairPath: FairPath;
+  headline: string; // e.g. "Not the asshole — five to two."
+  oneLiner: string; // the shareable line
+}
+
+export interface ConsistencyCheck {
+  agreement: number; // 0..1 (1.0 = the verdict held across the flip)
+  a: VerdictCategory; // this telling
+  b: VerdictCategory; // the mirrored / swapped telling
+  held: boolean;
+  detail: string;
+}
+
+export interface Consistency {
+  povFlip: ConsistencyCheck;
+  biasSwap: ConsistencyCheck;
+}
+
+export interface SoloTelling {
+  narrator: Side;
+  verdict: VerdictCategory;
+  quote: string;
+}
+
+/** The single-agent baseline, run live on the same input. */
+export interface SoloResult {
+  tellings: SoloTelling[];
+  flipped: boolean;
+  povFlip: number; // 0..1
+  model: string;
+}
+
+export interface Gauge {
+  status: string; // FILING | ARGUING | CROSS | DELIBERATING | PAUSED | RULED
+  round: number;
+  roundsEst: number;
+  tokens: number;
+  jurors: number;
+  moved: number;
+}
+
+/** Whether the live engine is on, and how it is wired. Surfaced honestly in the UI. */
+export interface EngineInfo {
+  /** true when a real DASHSCOPE_API_KEY backs the society */
+  live: boolean;
+  provider: 'qwen' | 'demo';
+  baseUrl: string;
+  models: Record<string, string>;
+  grounding: string;
+  comms: { telegram: boolean; email: boolean };
+  note: string;
+}
+
+// ─── The streamed / recorded event union ────────────────────────────────────
+interface Base {
+  ts: number;
+  /** monotonic sequence number within a case record */
+  seq?: number;
+}
+
+export type CourtEvent =
+  | (Base & { t: 'case_opened'; caseId: string; title: string; mode: InputMode; narrator: Side; demo: boolean })
+  | (Base & { t: 'status'; gauge: Gauge })
+  | (Base & { t: 'filing'; docket: Docket; steps: ProceedingStep[] })
+  | (Base & { t: 'argument'; arg: Argument })
+  | (Base & { t: 'objection'; by: string; text: string })
+  | (Base & { t: 'exhibit'; exhibit: Exhibit })
+  | (Base & { t: 'deliberation'; who: string; text: string; tone?: 'ochre' | 'slate' | 'moved' | 'ink' })
+  | (Base & { t: 'vote'; vote: Vote })
+  | (Base & { t: 'vote_change'; change: VoteChange })
+  | (Base & { t: 'human_question'; question: HumanQuestion })
+  | (Base & { t: 'human_answer'; answer: string })
+  | (Base & { t: 'verdict'; verdict: Verdict })
+  | (Base & { t: 'consistency'; consistency: Consistency })
+  | (Base & { t: 'solo'; solo: SoloResult })
+  | (Base & { t: 'note'; text: string; level?: 'info' | 'honest' | 'warn' })
+  | (Base & { t: 'done'; caseId: string; paused?: boolean; resumeToken?: string })
+  | (Base & { t: 'error'; message: string });
+
+export type CourtEventType = CourtEvent['t'];
+
+// ─── Docket cards, suite, metrics ───────────────────────────────────────────
+
+export interface DocketCard {
+  id: string;
+  title: string;
+  blurb: string;
+  verdict: string; // e.g. "NTA · 5–2"
+  date: string;
+  example: boolean;
+  faces: [number, number]; // sketch seeds for the two mini busts (warm, cool)
+}
+
+export interface SuiteCase {
+  id: string;
+  title: string;
+  category: 'relationship' | 'family' | 'roommate' | 'workplace' | 'money';
+  story: string;
+  /** known crowd-consensus label (the proxy, disclosed small-N) */
+  crowd: VerdictCategory;
+  absentName: string;
+}
+
+export interface SuiteRow {
+  id: string;
+  title: string;
+  crowd: VerdictCategory;
+  courtA: VerdictCategory; // court, your telling
+  courtB: VerdictCategory; // court, mirrored telling
+  courtHeld: boolean;
+  courtMatchesCrowd: boolean;
+  soloA: VerdictCategory;
+  soloB: VerdictCategory;
+  soloHeld: boolean;
+  soloMatchesCrowd: boolean;
+}
+
+export interface Metrics {
+  povFlip: { court: number; solo: number };
+  biasSwap: { court: number; solo: number };
+  crowd: { court: number; solo: number; n: number };
+  tokensSavedPct: number;
+  roundsAvg: number;
+  humanQuestionRate: string; // "1 in 6"
+  live: boolean;
+  source: 'live' | 'cached-demo';
+}
