@@ -100,3 +100,105 @@ export class QwenCourt implements CourtProvider {
       }
     }
     let pivotal: HumanQuestion | undefined;
+    if (value?.pivotal?.question) {
+      pivotal = { question: String(value.pivotal.question), options: ['Yes', 'No'], why: String(value.pivotal.why || 'The case turns on this fact.') };
+    }
+    return { exhibit, pivotal, tokens: tokens + extra };
+  }
+
+  async jury(lenses: JurorLens[], story: string, docket: Docket, args: Argument[], opts: JuryOpts) {
+    const lensList = lenses.map((l) => `${l.id} (${l.name}: ${l.frame})`).join('\n');
+    const argText = args.map((a) => `${a.who}: ${a.text}`).join('\n');
+    const priorText = opts.repoll && opts.priorVotes?.length
+      ? `\nYour prior votes:\n${opts.priorVotes.map((v) => `${v.jurorId}: ${v.verdict} (${Math.round(v.confidence * 100)}%)`).join('\n')}\nAfter hearing the deliberation, a juror MAY change their vote if genuinely moved.` : '';
+    const messages: Msg[] = [
+      { role: 'system', content: 'You are the Jury of a fair court: distinct value-lenses, each reasoning from its OWN frame. Vote NTA / YTA / ESH / NAH. Do not converge artificially. Output strict JSON only.' },
+      { role: 'user', content:
+        `Question: ${docket.question}\nStory:\n"""${story}"""\n\nArguments:\n${argText}\n\nJurors:\n${lensList}${priorText}\n\n` +
+        'Return JSON {"votes":[{"jurorId":"<id>","verdict":"NTA|YTA|ESH|NAH","confidence":0..1,"reason":"<one sentence in this lens\'s voice>"}]} with exactly one entry per juror id above.' },
+    ];
+    const { value, tokens } = await chatJson<any>(messages, { model: CONFIG.models.jury, thinking: false, maxTokens: 1200 });
+    const raw: any[] = Array.isArray(value?.votes) ? value.votes : Array.isArray(value) ? value : [];
+    const byId = new Map(raw.map((v) => [String(v.jurorId), v]));
+    const votes: Vote[] = lenses.map((l) => {
+      const r = byId.get(l.id) || {};
+      return { jurorId: l.id, lens: l.name, verdict: coerceCat(r.verdict), confidence: clamp01(r.confidence), reason: String(r.reason || `${l.name}: a considered call.`), round: opts.round };
+    });
+    return { votes, tokens };
+  }
+
+  async deliberate(story: string, docket: Docket, args: Argument[], votes: Vote[]) {
+    const messages: Msg[] = [
+      { role: 'system', content: 'You are the jury foreperson narrating deliberation. If one juror is genuinely moved by an argument to change their vote, name them. Output strict JSON only.' },
+      { role: 'user', content:
+        `Votes:\n${votes.map((v) => `${v.jurorId} (${v.lens}): ${v.verdict}`).join('\n')}\nArguments:\n${args.map((a) => `${a.who}: ${a.text}`).join('\n')}\n\n` +
+        'Return JSON {"text": "<one short line, the moment a juror is moved, in their voice>", "change": {"jurorId":"<id>","to":"NTA|YTA|ESH|NAH","reason":"<why>"} or null}.' },
+    ];
+    const { value, tokens } = await chatJson<any>(messages, { model: CONFIG.models.jury, thinking: false, maxTokens: 300 });
+    let change: any;
+    if (value?.change?.jurorId) {
+      const j = votes.find((v) => v.jurorId === value.change.jurorId);
+      if (j) { const to = coerceCat(value.change.to); if (to !== j.verdict) change = { jurorId: j.jurorId, from: j.verdict, to, reason: String(value.change.reason || 'moved by the argument') }; }
+    }
+    return { text: clean(String(value?.text || '…the room weighs it.')), change, tokens };
+  }
+
+  async repair(story: string, docket: Docket, category: VerdictCategory) {
+    const messages: Msg[] = [
+      { role: 'system', content: 'You write the Fair Path Forward: the ONE honest repair each side could make, warm and specific, never shaming. Output strict JSON only.' },
+      { role: 'user', content: `Verdict: ${category}. Question: ${docket.question}\nStory:\n"""${story}"""\n\nReturn JSON {"you": "<repair for the narrator, 1-2 sentences>", "other": "<repair for ${docket.parties.absent}, 1-2 sentences>", "oneLiner": "<a shareable line, <120 chars, that says both sides were argued and the verdict held from either chair>"}.` },
+    ];
+    const { value, tokens } = await chatJson<any>(messages, { model: CONFIG.models.jury, thinking: false, maxTokens: 400 });
+    return {
+      fairPath: { you: String(value?.you || 'Own your part; name it plainly.'), other: String(value?.other || 'Own their part; say what really hurt.') },
+      oneLiner: String(value?.oneLiner || `A jury that argued both sides ruled ${category} — and it held from either chair.`),
+      tokens,
+    };
+  }
+
+  async quickVerdict(story: string, lenses: JurorLens[], absentName: string) {
+    const lensList = lenses.map((l) => `${l.id} (${l.name}: ${l.frame})`).join('\n');
+    const messages: Msg[] = [
+      { role: 'system', content: 'You are a fair jury of distinct value-lenses. Judge the DEED, not the storyteller. Vote NTA/YTA/ESH/NAH. Output strict JSON only.' },
+      { role: 'user', content: `Story:\n"""${story}"""\nThe other party: ${absentName}.\nJurors:\n${lensList}\nReturn JSON {"votes":[{"jurorId":"<id>","verdict":"...","confidence":0..1,"reason":"..."}]}.` },
+    ];
+    const { value, tokens } = await chatJson<any>(messages, { model: CONFIG.models.jury, thinking: false, maxTokens: 900 });
+    const raw: any[] = Array.isArray(value?.votes) ? value.votes : Array.isArray(value) ? value : [];
+    const byId = new Map(raw.map((v) => [String(v.jurorId), v]));
+    const votes: Vote[] = lenses.map((l) => { const r = byId.get(l.id) || {}; return { jurorId: l.id, lens: l.name, verdict: coerceCat(r.verdict), confidence: clamp01(r.confidence), reason: String(r.reason || ''), round: 1 }; });
+    return { votes, tokens };
+  }
+
+  async mirror(story: string, absentName: string) {
+    const messages: Msg[] = [
+      { role: 'system', content: `Re-narrate the SAME events faithfully from ${absentName}'s first-person perspective. Change ONLY who is telling it — never the facts. 2-4 sentences.` },
+      { role: 'user', content: `"""${story}"""` },
+    ];
+    const { text, tokens } = await chat(messages, { model: CONFIG.models.counsel, temperature: 0.6, maxTokens: 320 });
+    return { story: clean(text), tokens };
+  }
+
+  async solo(story: string, narrator: Side) {
+    // The fair, strong baseline: ONE agent, same model, same task — no society.
+    const messages: Msg[] = [
+      { role: 'system', content: 'You are a helpful assistant. Judge this personal conflict fairly — was the writer in the wrong? Give a verdict (NTA/YTA/ESH/NAH) and one warm sentence. Output strict JSON only.' },
+      { role: 'user', content: `"""${story}"""\nReturn JSON {"verdict":"NTA|YTA|ESH|NAH","quote":"<one sentence, how you'd tell the writer>"}.` },
+    ];
+    const { value, tokens } = await chatJson<any>(messages, { model: CONFIG.models.solo, thinking: false, maxTokens: 300 });
+    return { verdict: coerceCat(value?.verdict), quote: clean(String(value?.quote || 'Your feelings are completely valid.')), tokens };
+  }
+
+  async readScreenshot(imageDataUrl: string) {
+    const { text, tokens } = await vision(
+      imageDataUrl,
+      'This is a screenshot of a real argument (texts, DMs, or an email thread). Summarize what happened as a first-person account from the user\'s side, 3-5 sentences. If you cannot read it, say so plainly.',
+    );
+    return { story: clean(text), tokens };
+  }
+}
+
+function arr(v: any, max: number): string[] {
+  if (!Array.isArray(v)) return [];
+  return v.map((x) => String(x)).filter(Boolean).slice(0, max);
+}
+function clean(t: string): string { return String(t || '').trim().replace(/^["']|["']$/g, '').replace(/\s+/g, ' '); }
