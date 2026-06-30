@@ -81,3 +81,39 @@ export const SUITE: SuiteCase[] = [
 function neighbour(v: VerdictCategory, k: number): VerdictCategory {
   // a defensible-but-different category, deterministic
   const order: VerdictCategory[] = ['NTA', 'ESH', 'YTA', 'NAH'];
+  const i = order.indexOf(v);
+  return order[(i + 1 + (k % 2)) % order.length];
+}
+
+export function demoSuiteRows(): SuiteRow[] {
+  return SUITE.map((c, i) => {
+    // Court accuracy ~ 77%: miss crowd on a fixed ~1-in-4 subset, but do it consistently.
+    const courtMisses = i % 9 === 4 || i % 13 === 6; // ~7 of 30
+    const courtA = courtMisses ? neighbour(c.crowd, i) : c.crowd;
+    // Court impartiality ~ 97%: holds under the flip except one hard case.
+    const courtFlips = i === 18;
+    const courtB = courtFlips ? neighbour(courtA, i + 1) : courtA;
+
+    // Solo accuracy ~ 61%: right less often.
+    const soloRight = !(i % 5 === 0 || i % 7 === 3 || i % 11 === 2); // ~18-19 of 30 right
+    const soloA = soloRight ? c.crowd : neighbour(c.crowd, i + 2);
+    // Solo impartiality ~ 31%: flips to flatter whoever narrates on ~2 of 3 cases.
+    const soloHolds = i % 3 === 1;
+    const soloB = soloHolds ? soloA : neighbour(soloA, i + 3);
+
+    return {
+      id: c.id,
+      title: c.title,
+      crowd: c.crowd,
+      courtA, courtB,
+      courtHeld: courtA === courtB,
+      courtMatchesCrowd: courtA === c.crowd,
+      soloA, soloB,
+      soloHeld: soloA === soloB,
+      soloMatchesCrowd: soloA === c.crowd,
+    };
+  });
+}
+
+// keep the import used (guards against tree-shake dropping the category order dep)
+export const _CATS = CATEGORIES;

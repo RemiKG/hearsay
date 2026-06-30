@@ -131,3 +131,61 @@ async function runVerdict(caseId: string, state: RunState, emit: Emit): Promise<
   tokens += delib.tokens;
   await emit({ t: 'deliberation', ts: now(), who: 'the jury', text: delib.text, tone: 'moved' });
   let moved = 0;
+  if (delib.change) {
+    votes = votes.map((v) => v.jurorId === delib.change!.jurorId ? { ...v, verdict: delib.change!.to, moved: true } : v);
+    moved = 1;
+    await emit({ t: 'vote_change', ts: now(), change: { jurorId: delib.change.jurorId, lens: votes.find((v) => v.jurorId === delib.change!.jurorId)?.lens || '', from: delib.change.from, to: delib.change.to, reason: delib.change.reason } });
+    const nv = votes.find((v) => v.jurorId === delib.change!.jurorId);
+    if (nv) await emit({ t: 'vote', ts: now(), vote: nv });
+  }
+  await pace(500);
+
+  // the Fair Path Forward + the deterministic Bench rules
+  const primary = classify(votes);
+  const repair = await provider.repair(state.story, state.docket, primary.category);
+  tokens += repair.tokens;
+  const verdict = rule(votes, repair.fairPath, repair.oneLiner);
+  await emitStatus(emit, gaugeOf('RULED', 4, tokens, jurors, moved));
+  await emit({ t: 'verdict', ts: now(), verdict });
+  await pace(600);
+
+  // ── live impartiality checks (the Bench, non-LLM, compares action-verdicts) ──
+  const mirror = await provider.mirror(state.story, state.absentName);
+  tokens += mirror.tokens;
+  const mirrorVotes = await provider.quickVerdict(mirror.story, lenses, state.absentName);
+  tokens += mirrorVotes.tokens;
+  const catB = classify(mirrorVotes.votes).category;
+
+  const biasStory = biasSwapStory(state.story);
+  const biasVotes = await provider.quickVerdict(biasStory, lenses, state.absentName);
+  tokens += biasVotes.tokens;
+  const catC = classify(biasVotes.votes).category;
+
+  await emit({ t: 'consistency', ts: now(), consistency: consistency(primary.category, catB, primary.category, catC) });
+  await emitStatus(emit, gaugeOf('RULED', 4, tokens, jurors, moved));
+  await emit({ t: 'done', ts: now(), caseId: caseId });
+}
+
+/** The single-agent baseline, run live on the same input — it flips to flatter each teller. */
+export async function runSolo(input: CaseInput): Promise<SoloResult> {
+  const provider = getProvider();
+  const story = (input.story || '').trim();
+  const you = await provider.solo(story, 'you');
+  const mir = await provider.mirror(story, input.absentName || 'the other party');
+  const her = await provider.solo(mir.story, 'absent');
+  const flipped = you.verdict !== her.verdict;
+  return {
+    tellings: [
+      { narrator: 'you', verdict: you.verdict, quote: you.quote },
+      { narrator: 'absent', verdict: her.verdict, quote: her.quote },
+    ],
+    flipped,
+    povFlip: flipped ? 0 : 1,
+    model: provider.live ? 'qwen3.7-max' : 'demo',
+  };
+}
+
+// append every emitted event to the NDJSON record, then hand to the transport
+function wrap(caseId: string, transport: Emit): Emit {
+  return async (ev) => { await appendEvent(caseId, ev); await transport(ev); };
+}
