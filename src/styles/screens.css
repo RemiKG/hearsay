@@ -1,0 +1,11 @@
+/* screen-specific layout: docket bullets + responsive stacking */
+.bullets { list-style: none; padding: 0; margin: 8px 0 0; }
+.bullets li { position: relative; padding-left: 16px; font-family: 'Figtree'; font-size: 14.5px; line-height: 1.45; color: var(--ink); margin-bottom: 5px; }
+.bullets li::before { content: ''; position: absolute; left: 0; top: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--b, var(--ochre)); }
+
+/* tablet: two-up power/metrics grids */
+@media (max-width: 1120px) {
+  .chambers-grid { grid-template-columns: 1fr 1fr !important; }
+}
+
+/* phone: everything stacks (inline grid-template needs !important to override) */
