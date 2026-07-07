@@ -141,3 +141,146 @@ function SessionView({ trial }: { trial: Trial }) {
 
           {exhibit && (
             <div className="row center gap12 fade-up" style={{ margin: '4px 0 16px' }}>
+              <Character cfg={{ seed: 77, tone: 'neutral', hair: 'short', brow: 'worry', mouth: 'set', jaw: 'oval', skin: '#D9A56A', gaze: 1 }} width={64} />
+              <div>
+                <Stamp label={exhibit.label} width={186} />
+                <div className="row center gap8" style={{ marginTop: 4 }}>
+                  <span className="hand c-inks" style={{ fontSize: 15 }}>the Cross-examiner grounds a contested fact</span>
+                  <Chip dot dotColor="var(--ochre)" style={{ fontSize: 11 }}>{exhibit.tool} · {exhibit.free ? 'FREE' : 'web'} · {exhibit.source}</Chip>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <hr style={{ margin: '10px 0', border: 0, borderTop: '1.3px solid rgba(42,36,32,0.16)' }} />
+          <div className="row between center">
+            <Eyebrow>the jury deliberates — and changes its mind</Eyebrow>
+            {deliberationLine && <span className="hand c-moved" style={{ fontSize: 17 }}>“{deliberationLine}”</span>}
+          </div>
+          <div className="jury-row" style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(votes.length, 5)}, 1fr)`, gap: 6, marginTop: 10 }}>
+            {votes.map((v) => (
+              <div key={v.jurorId} className="col center fade-up" style={{ gap: 2 }}>
+                <Character cfg={{ ...faceOf(v.jurorId), seed: seedOf(v.jurorId), tone: 'neutral' }} width={92} />
+                <Paddle label={v.verdict} moved={v.moved} scratch={v.moved} warm={v.verdict === 'NTA' && !v.moved} width={46} />
+                <span className="hand c-inkf" style={{ fontSize: 13 }}>{v.lens}</span>
+              </div>
+            ))}
+            {votes.length === 0 && <span className="hand c-inkf" style={{ fontSize: 16, gridColumn: '1/-1' }}>the jury is being empanelled…</span>}
+          </div>
+        </div>
+
+        <div className="col gap16">
+          <Ribbon entries={trial.state.record} style={{ height: 440 }} />
+          <Gauge rows={gaugeRows(trial)} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Waiting({ who }: { who: string }) {
+  return <div className="ui c-inkf" style={{ fontStyle: 'italic', fontSize: 15 }}>{who} is preparing to speak…</div>;
+}
+
+// ── screen 04 — the one human question ───────────────────────────────────────
+function QuestionOverlay({ trial }: { trial: Trial }) {
+  const q = trial.state.question!;
+  const answer = (a: string) => trial.state.caseId && trial.resume(trial.state.caseId, a);
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 30, background: 'rgba(234,217,188,0.55)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,760px)', gap: 20, alignItems: 'center', maxWidth: 1100 }} className="q-grid">
+        <div className="col center">
+          <div className="ringing"><Clerk pose="ring" width={190} /></div>
+          <span className="hand c-inks" style={{ fontSize: 22 }}>the Clerk rings its bell</span>
+        </div>
+        <Card accent style={{ padding: 30 }}>
+          <Eyebrow>one question before we rule</Eyebrow>
+          <div className="disp" style={{ fontSize: 30, margin: '10px 0 18px' }}>{q.question}</div>
+          <div className="row gap12 center">
+            <Btn primary style={{ fontSize: 22, padding: '14px 34px' }} onClick={() => answer(q.options[0])}>{q.options[0]}</Btn>
+            <Btn style={{ fontSize: 22, padding: '14px 34px' }} onClick={() => answer(q.options[1])}>{q.options[1]}</Btn>
+            <span className="ui c-inkf" style={{ fontSize: 15 }}>· one clean, binary answer</span>
+          </div>
+          <hr style={{ margin: '18px 0', border: 0, borderTop: '1.4px solid rgba(42,36,32,0.18)' }} />
+          <p className="ui" style={{ fontSize: 15, lineHeight: 1.5, margin: 0 }}><b>Why it’s asking.</b> {q.why}</p>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ── screen 05 — the verdict ──────────────────────────────────────────────────
+function VerdictView({ trial, nav }: { trial: Trial; nav: (h: string) => void }) {
+  const { verdict, consistency, votes, title, input } = trial.state;
+  const [rap, setRap] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setRap(true), 350); return () => clearTimeout(t); }, []);
+  if (!verdict) return null;
+  const share = () => {
+    const link = input?.story ? shareLink(input) : location.href;
+    const text = `${title} — Hearsay verdict: ${verdict.category} · ${verdict.split}. ${verdict.oneLiner} ${link}`;
+    if (navigator.share) navigator.share({ title: 'Hearsay verdict', text }).catch(() => {});
+    else { navigator.clipboard?.writeText(text); alert('Verdict copied — drop it in the group chat.'); }
+  };
+  return (
+    <div style={{ paddingTop: 18 }}>
+      <Eyebrow style={{ textAlign: 'center' }}>the court has ruled</Eyebrow>
+      <div className="col center" style={{ position: 'relative', margin: '14px 0 6px' }}>
+        <div className="row center" style={{ gap: 26 }}>
+          <BenchBoard verdict={verdict.category} split={verdict.split} size={1.35} />
+          <div className={rap ? 'rapping' : ''} style={{ transformOrigin: '80% 80%' }}><Gavel width={92} rot={-38} /></div>
+        </div>
+        <div className="hand" style={{ fontSize: 26, marginTop: 46 }}>“{verdict.headline}”</div>
+        <div className="row center gap8" style={{ marginTop: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {votes.map((v) => <Paddle key={v.jurorId} label={v.verdict} moved={v.moved} scratch={v.moved} warm={v.verdict === verdict.category && !v.moved} width={34} />)}
+        </div>
+        <div className="hand c-inkf" style={{ fontSize: 16, marginTop: 4 }}>{verdict.split.split('-')[0]} {verdict.category} · {verdict.split.split('-')[1]} other · {verdict.moved > 0 ? `${verdict.moved} juror was moved on the record` : 'no minority moved'} · {verdict.calibration}</div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.4fr) minmax(0,1fr)', gap: 22, marginTop: 20 }} className="verdict-grid">
+        <Card accent style={{ padding: 26 }}>
+          <Eyebrow>the fair path forward</Eyebrow>
+          <div className="disp" style={{ fontSize: 26, margin: '6px 0 16px' }}>A way to make peace.</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '10px 14px' }}>
+            <span className="hand c-ochred" style={{ fontSize: 20 }}>for you →</span><span className="ui" style={{ fontSize: 16, lineHeight: 1.45 }}>{verdict.fairPath.you}</span>
+            <span className="hand c-slated" style={{ fontSize: 20 }}>for them →</span><span className="ui" style={{ fontSize: 16, lineHeight: 1.45 }}>{verdict.fairPath.other}</span>
+          </div>
+          {consistency && (
+            <div className="row center gap8" style={{ marginTop: 20, paddingTop: 14, borderTop: '1.3px solid rgba(42,36,32,0.16)' }}>
+              <span className="hand c-inks" style={{ fontSize: 19 }}>Same case, told from the other side →</span>
+              <SplitFlap value={consistency.povFlip.b} size={0.8} />
+              <span className="hand c-ochred" style={{ fontSize: 19 }}>{consistency.povFlip.held ? 'same verdict.' : 'it moved.'}</span>
+            </div>
+          )}
+          <Btn style={{ marginTop: 16 }} onClick={() => nav('#/proof')}>See the proof: Court vs one agent →</Btn>
+        </Card>
+
+        <Card style={{ padding: 24 }}>
+          <Chip style={{ background: 'var(--paper)', color: 'var(--ochre-deep)', fontSize: 11 }}>VERDICT CARD</Chip>
+          <div className="hand c-inks" style={{ fontSize: 24, textAlign: 'center', marginTop: 8 }}>{title}</div>
+          <div className="row center" style={{ justifyContent: 'center', gap: 20, margin: '12px 0' }}>
+            <SplitFlap value={verdict.category} /><SplitFlap value={verdict.split} pale />
+          </div>
+          <hr style={{ margin: '8px 0 14px', border: 0, borderTop: '1.3px solid rgba(42,36,32,0.2)' }} />
+          <p className="ui" style={{ fontSize: 16, lineHeight: 1.45, textAlign: 'center' }}>“{verdict.oneLiner}”</p>
+          <Btn primary style={{ width: '100%', marginTop: 12 }} onClick={share}>Share to the group chat</Btn>
+          <div className="row center between" style={{ marginTop: 14 }}>
+            <span className="disp" style={{ fontSize: 20 }}>Hearsay</span>
+            <span className="hand c-inkf" style={{ fontSize: 16 }}>hear both sides.</span>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ── shared ───────────────────────────────────────────────────────────────────
+function gaugeRows(trial: Trial): Array<[string, string, string?]> {
+  const g = trial.state.gauge;
+  return [
+    ['status', g?.status || '—', 'var(--ochre-deep)'],
+    ['round', g ? `${g.round} / ~${g.roundsEst}` : '—'],
+    ['tokens', g ? g.tokens.toLocaleString() : '0', 'var(--ochre-deep)'],
+    ['jurors', String(g?.jurors ?? 7)],
+    ['moved', String(g?.moved ?? 0), 'var(--moved)'],
+  ];
+}

@@ -9,3 +9,14 @@
 }
 
 /* phone: everything stacks (inline grid-template needs !important to override) */
+@media (max-width: 780px) {
+  .intake-grid, .rec-grid, .sess-grid, .verdict-grid, .proof-grid, .bars-grid,
+  .num-grid, .q-grid, .chambers-grid { grid-template-columns: 1fr !important; }
+  .q-grid { grid-template-columns: 1fr !important; }
+  h1.disp { font-size: 32px !important; }
+}
+
+/* jury row: keep faces readable, wrap on small screens */
+@media (max-width: 900px) {
+  .jury-row { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)) !important; }
+}
