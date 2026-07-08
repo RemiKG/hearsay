@@ -23,3 +23,29 @@ export async function deliverTelegram(chatId: string, text: string): Promise<Del
     return { ok: false, channel: 'telegram', detail: e?.message || 'telegram error' };
   }
 }
+
+export async function deliverEmail(_to: string, _subject: string, _text: string): Promise<DeliverResult> {
+  if (!CONFIG.smtpUrl) return { ok: false, channel: 'email', detail: 'not configured — set SMTP_URL + SMTP_FROM to enable real delivery' };
+  // Real SMTP send is enabled by wiring a transactional provider/SMTP client here.
+  // Kept as an explicit, documented seam so nothing is faked.
+  return { ok: false, channel: 'email', detail: 'SMTP endpoint set but no transport is wired in — add a transactional provider/SMTP client to enable delivery' };
+}
+
+/** Deliver a verdict card over the best available channel; honest about what happened. */
+export async function deliverVerdictCard(opts: { channel: 'telegram' | 'email'; to: string; title: string; verdict: string; oneLiner: string; link?: string }): Promise<DeliverResult> {
+  const body =
+    `⚖️ <b>Hearsay — ${escapeHtml(opts.title)}</b>\n` +
+    `Verdict: <b>${escapeHtml(opts.verdict)}</b>\n` +
+    `${escapeHtml(opts.oneLiner)}\n` +
+    (opts.link ? `\n${opts.link}` : '');
+  return opts.channel === 'telegram'
+    ? deliverTelegram(opts.to, body)
+    : deliverEmail(opts.to, `Hearsay verdict — ${opts.title}`, body.replace(/<[^>]+>/g, ''));
+}
+
+export async function sendInvite(opts: { channel: 'telegram' | 'email'; to: string; link: string; from?: string }): Promise<DeliverResult> {
+  const body = `You've been invited to tell your side of a disagreement to Hearsay — a court that argues both sides fairly.\n\nAdd your account here: ${opts.link}`;
+  return opts.channel === 'telegram' ? deliverTelegram(opts.to, body) : deliverEmail(opts.to, 'Tell your side — Hearsay', body);
+}
+
+function escapeHtml(s: string) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
