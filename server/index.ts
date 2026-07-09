@@ -84,9 +84,17 @@ app.post('/api/trial/:id/resume', async (c) => {
   const caseId = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
   const answer = String(body?.answer || 'No');
+  // The client sends the original input so a stateless host can rebuild the paused
+  // state if it was lost between requests (resolve an exampleId to its story here).
+  let input: CaseInput | undefined;
+  const src = body?.input;
+  if (src && typeof src === 'object') {
+    input = inputFrom(src);
+    if (src.exampleId) { const ex = exampleStory(String(src.exampleId)); if (ex) input = { ...input, story: ex.story, absentName: ex.absentName }; }
+  }
   return streamSSE(c, async (stream) => {
     const emit: Emit = async (ev: CourtEvent) => { await stream.writeSSE({ data: JSON.stringify(ev), event: ev.t }); };
-    try { await resumeTrial({ caseId, answer, emit }); }
+    try { await resumeTrial({ caseId, answer, input, emit }); }
     catch (e: any) { await emit({ t: 'error', ts: Date.now(), message: e?.message || 'resume error' }); }
   });
 });

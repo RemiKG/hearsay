@@ -185,7 +185,7 @@ function Waiting({ who }: { who: string }) {
 // ── screen 04 — the one human question ───────────────────────────────────────
 function QuestionOverlay({ trial }: { trial: Trial }) {
   const q = trial.state.question!;
-  const answer = (a: string) => trial.state.caseId && trial.resume(trial.state.caseId, a);
+  const answer = (a: string) => trial.state.caseId && trial.resume(trial.state.caseId, a, trial.state.input);
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 30, background: 'rgba(234,217,188,0.55)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,760px)', gap: 20, alignItems: 'center', maxWidth: 1100 }} className="q-grid">

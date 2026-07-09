@@ -100,10 +100,38 @@ export async function runTrial(opts: { caseId: string; input: CaseInput; panelSi
   return { paused: false };
 }
 
+/**
+ * Rebuild the paused RunState deterministically from the original input. Used as a
+ * serverless-safe fallback: on a stateless host the saved state can be lost between
+ * the pause request and the resume request (different instances), so we reconstruct
+ * it (file + both counsels + cross) rather than losing the trial. On a persistent
+ * server (the Docker/Alibaba target) the saved state is found and this never runs.
+ */
+async function rebuildState(input: CaseInput): Promise<RunState> {
+  const provider = getProvider();
+  let story = (input.story || '').trim();
+  if (!story && input.mode === 'screenshot' && input.imageDataUrl) {
+    const v = await provider.readScreenshot(input.imageDataUrl);
+    story = v.story || story;
+  }
+  const absentName = input.absentName || 'the other party';
+  const narrator: Side = input.narrator ?? 'you';
+  const panelSize = 7;
+  const filed = await provider.file(story, absentName);
+  const args: Argument[] = [];
+  const you = await provider.argue('you', story, filed.docket, args, 1);
+  args.push({ side: 'you', who: 'Counsel for You', text: you.text, round: 1 });
+  const absent = await provider.argue('absent', story, filed.docket, args, 1);
+  args.push({ side: 'absent', who: 'Counsel for the Absent', text: absent.text, round: 1, imagined: !input.absentSide });
+  const cross = await provider.cross(story, filed.docket, args);
+  return { story, absentName, narrator, panelSize, docket: filed.docket, args, tokens: filed.tokens + you.tokens + absent.tokens + cross.tokens, demo: !provider.live };
+}
+
 /** Resume after the one human answer, straight into deliberation + verdict. */
-export async function resumeTrial(opts: { caseId: string; answer: string; emit: Emit }): Promise<void> {
+export async function resumeTrial(opts: { caseId: string; answer: string; input?: CaseInput; emit: Emit }): Promise<void> {
   const emit = wrap(opts.caseId, opts.emit);
-  const state = await loadState<RunState>(opts.caseId);
+  let state = await loadState<RunState>(opts.caseId);
+  if (!state && opts.input) state = await rebuildState(opts.input);
   if (!state) { await emit({ t: 'error', ts: now(), message: 'no paused trial to resume' }); return; }
   await emit({ t: 'human_answer', ts: now(), answer: opts.answer });
   // fold the answer into the record so the jury weighs it (deed still judged, not telling)

@@ -116,9 +116,9 @@ export function useTrial() {
     abortRef.current = streamTrial('/api/trial', input, (ev) => dispatch({ type: 'event', ev }));
   }, []);
 
-  const resume = useCallback((caseId: string, answer: string) => {
+  const resume = useCallback((caseId: string, answer: string, input?: CaseInput) => {
     abortRef.current?.();
-    abortRef.current = streamTrial(`/api/trial/${caseId}/resume`, { answer }, (ev) => dispatch({ type: 'event', ev }));
+    abortRef.current = streamTrial(`/api/trial/${caseId}/resume`, { answer, input }, (ev) => dispatch({ type: 'event', ev }));
   }, []);
 
   const reset = useCallback(() => { abortRef.current?.(); dispatch({ type: 'reset' }); }, []);
