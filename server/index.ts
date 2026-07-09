@@ -119,7 +119,14 @@ if (existsSync(DIST)) {
   app.get('*', (c) => c.html(indexHtml)); // SPA fallback
 }
 
-const port = CONFIG.port;
-serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`⚖  Hearsay listening on http://localhost:${info.port}  (engine: ${engineInfo().provider})`);
-});
+export { app };
+
+// Start a long-running Node listener only outside a serverless host (Vercel sets VERCEL=1,
+// where the same `app` is served by api/[[...route]].ts instead). Alibaba Cloud ECS/SAS
+// (the production target, via the Dockerfile) runs this path.
+if (!process.env.VERCEL) {
+  const port = CONFIG.port;
+  serve({ fetch: app.fetch, port }, (info) => {
+    console.log(`⚖  Hearsay listening on http://localhost:${info.port}  (engine: ${engineInfo().provider})`);
+  });
+}

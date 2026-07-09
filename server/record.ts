@@ -10,7 +10,9 @@ import { fileURLToPath } from 'node:url';
 import type { CourtEvent, DocketCard } from '../shared/types.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DIR = path.join(ROOT, '.data', 'records');
+// The record dir is overridable so a serverless host (e.g. Vercel) can point it at a
+// writable temp dir; the Docker/ECS production target uses the default under the repo.
+const DIR = process.env.HEARSAY_DATA_DIR || path.join(ROOT, '.data', 'records');
 
 async function ensure() { await fs.mkdir(DIR, { recursive: true }); }
 const recPath = (id: string) => path.join(DIR, `${safe(id)}.ndjson`);
