@@ -30,3 +30,5 @@ npm-debug.log*
 # python bytecode (from running skill scripts)
 __pycache__/
 *.pyc
+
+.vercel
