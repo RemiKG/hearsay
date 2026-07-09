@@ -2,6 +2,9 @@
 
 > **Every AI agrees with whoever's typing. Hearsay hears the one who isn't.**
 
+**▶ Live demo: https://hearsay-flame.vercel.app** — type any conflict and convene the court (runs the
+honest demo engine cold, for a stranger; set `DASHSCOPE_API_KEY` to activate the live Qwen society).
+
 Tell it the fight you can't stop replaying. A whole courtroom of AI agents hears it out — **a lawyer
 for you, a lawyer for the person who isn't in the room, and a jury that actually argues** — then a
 **deterministic Bench** hands down an honest verdict (`NTA · YTA · ESH · NAH`) and a fair way to make
