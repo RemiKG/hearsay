@@ -10,7 +10,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { app } from '../server/index.js';
 
-export const config = { runtime: 'nodejs', maxDuration: 60 };
+export const config = { runtime: 'nodejs', maxDuration: 300 };
 
 export default async function handler(req: IncomingMessage & { body?: unknown }, res: ServerResponse) {
   const host = (req.headers['x-forwarded-host'] || req.headers.host || 'localhost') as string;

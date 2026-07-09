@@ -87,6 +87,8 @@ function reduce(state: TrialState, ev: CourtEvent): TrialState {
     case 'done':
       return { ...state, phase: ev.paused ? 'paused' : (state.verdict ? 'ruled' : state.phase) };
     case 'error':
+      // a late connection drop must never blank out a verdict already on screen
+      if (state.phase === 'ruled') return state;
       return { ...state, phase: 'error', error: ev.message };
     default:
       return state;

@@ -45,8 +45,8 @@ export class QwenCourt implements CourtProvider {
           '"question": the single real question before the court, phrased neutrally}.',
       },
     ];
-    // The Clerk reasons long-horizon (thinking on).
-    const { value, tokens } = await chatJson<any>(messages, { model: CONFIG.models.clerk, thinking: true, maxTokens: 1100 });
+    // Thinking off: the filing must land in seconds, not the better part of a minute.
+    const { value, tokens } = await chatJson<any>(messages, { model: CONFIG.models.clerk, thinking: false, maxTokens: 1100 });
     const docket: Docket = {
       caseNo: 'HS-' + Math.random().toString(36).slice(2, 6).toUpperCase(),
       title: String(value?.title || 'A conflict').slice(0, 60),
@@ -69,7 +69,7 @@ export class QwenCourt implements CourtProvider {
       { role: 'system', content: `You are ${who} in a fair court. ${mandate} Speak in first person as an advocate, 2-3 sentences, sharp and specific. No preamble.` },
       { role: 'user', content: `The question: ${docket.question}\nDisputed: ${docket.disputedFacts.join('; ')}\nStory:\n"""${story}"""\n${priorText ? `\nAlready argued:\n${priorText}\n` : ''}\nGive your argument now (round ${round}).` },
     ];
-    const { text, tokens } = await chat(messages, { model: CONFIG.models.counsel, temperature: 0.85, maxTokens: 260 });
+    const { text, tokens } = await chat(messages, { model: CONFIG.models.counsel, temperature: 0.85, maxTokens: 260, thinking: false });
     return { text: clean(text), tokens };
   }
 
@@ -81,11 +81,12 @@ export class QwenCourt implements CourtProvider {
         'Return JSON: {"contested": {"claim": a checkable norm/fact this verdict may hinge on, "query": a short web query to check it, "label": a <28-char stamp like "NOTICE GIVEN: 4 DAYS"} or null, ' +
         '"pivotal": {"question": ONE clean yes/no question to the narrator about a genuinely missing pivotal fact, "why": one sentence on how each answer changes the case} or null}.' },
     ];
-    const { value, tokens } = await chatJson<any>(messages, { model: CONFIG.models.cross, maxTokens: 500 });
+    const { value, tokens } = await chatJson<any>(messages, { model: CONFIG.models.cross, thinking: false, maxTokens: 500 });
     let extra = 0;
     let exhibit: Exhibit | undefined;
     if (value?.contested?.query) {
-      const g = await ground(String(value.contested.query));
+      // Grounding gets a hard 30s budget — if the web tool is slow the court moves on.
+      const g = await ground(String(value.contested.query), AbortSignal.timeout(30_000));
       if (g) {
         extra += g.tokens;
         exhibit = {
@@ -174,7 +175,7 @@ export class QwenCourt implements CourtProvider {
       { role: 'system', content: `Re-narrate the SAME events faithfully from ${absentName}'s first-person perspective. Change ONLY who is telling it — never the facts. 2-4 sentences.` },
       { role: 'user', content: `"""${story}"""` },
     ];
-    const { text, tokens } = await chat(messages, { model: CONFIG.models.counsel, temperature: 0.6, maxTokens: 320 });
+    const { text, tokens } = await chat(messages, { model: CONFIG.models.counsel, temperature: 0.6, maxTokens: 320, thinking: false });
     return { story: clean(text), tokens };
   }
 

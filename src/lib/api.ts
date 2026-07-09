@@ -28,6 +28,8 @@ export const api = {
 /** Stream a trial (POST) and dispatch each CourtEvent. Returns an abort function. */
 export function streamTrial(path: string, body: unknown, onEvent: (ev: CourtEvent) => void, onDone?: () => void): () => void {
   const ac = new AbortController();
+  let terminal = false; // saw a 'done' or 'error' event — the proceeding actually ended
+  const handle = (ev: CourtEvent) => { if (ev.t === 'done' || ev.t === 'error') terminal = true; onEvent(ev); };
   (async () => {
     try {
       const res = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: ac.signal });
@@ -48,8 +50,12 @@ export function streamTrial(path: string, body: unknown, onEvent: (ev: CourtEven
           if (!dataLine) continue;
           const json = dataLine.slice(5).trim();
           if (!json) continue;
-          try { const ev = JSON.parse(json) as CourtEvent; onEvent(ev); } catch { /* ignore partial */ }
+          try { const ev = JSON.parse(json) as CourtEvent; handle(ev); } catch { /* ignore partial */ }
         }
+      }
+      // The connection closed before the court finished — say so instead of freezing.
+      if (!terminal && !ac.signal.aborted) {
+        onEvent({ t: 'error', ts: Date.now(), message: 'The stream was cut before the verdict — the connection to the court dropped. Please convene the court again.' } as CourtEvent);
       }
     } catch (e) {
       if (!ac.signal.aborted) onEvent({ t: 'error', ts: Date.now(), message: (e as Error).message } as CourtEvent);

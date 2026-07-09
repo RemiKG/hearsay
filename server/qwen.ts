@@ -39,7 +39,7 @@ const supportsJsonFormat = (model: string) => !/max/i.test(model);
 async function postJson(url: string, body: unknown, signal?: AbortSignal): Promise<any> {
   if (!CONFIG.dashscopeApiKey) throw new Error('no-key');
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 90_000);
+  const timer = setTimeout(() => controller.abort(), 150_000);
   const onAbort = () => controller.abort();
   signal?.addEventListener('abort', onAbort);
   try {
@@ -116,7 +116,7 @@ export async function vision(imageUrl: string, prompt: string, opts?: { model?: 
       ],
     },
   ];
-  return chat(messages, { model, temperature: 0.3, maxTokens: 700, signal: opts?.signal });
+  return chat(messages, { model, temperature: 0.3, maxTokens: 700, thinking: false, signal: opts?.signal });
 }
 
 /**

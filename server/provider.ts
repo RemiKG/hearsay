@@ -22,7 +22,7 @@ export interface JuryOpts {
 export interface CourtProvider {
   readonly live: boolean;
 
-  /** Clerk (qwen3.7-max + preserve_thinking): decompose the mess into a case record. */
+  /** Clerk (qwen3.7-max): decompose the mess into a case record. */
   file(story: string, absentName: string): Promise<{ docket: Docket; steps: ProceedingStep[]; tokens: number }>;
 
   /** Counsel for You / for the Absent (qwen3.6-flash): one-sided, opposed mandates. */
